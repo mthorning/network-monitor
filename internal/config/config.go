@@ -13,7 +13,7 @@ type Opts struct {
 
 func NewOpts() *Opts {
 	config := &Opts{
-		PingIps:    "192.168.68.1, 192.168.1.1, 1.1.1.1, 8.8.8.8, 198.41.0.4",
+		PingIps:    "192.168.68.1, 192.168.1.1, 1.1.1.1, 8.8.8.8, 79.79.79.79",
 		LogLevel:   slog.LevelInfo,
 		ServerPort: "8080",
 	}
