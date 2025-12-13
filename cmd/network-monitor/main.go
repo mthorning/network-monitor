@@ -30,6 +30,11 @@ func main() {
 	}
 
 	slog.Info("Starting Network Monitor", "IPs", ips)
+	slog.Debug("Configuration options",
+		"PingIps", opts.PingIps,
+		"PingInterval", opts.PingInterval,
+		"ServerPort", opts.ServerPort,
+	)
 
 	for _, ip := range ips {
 		go utils.PingAndReport(ip, opts, metrics)

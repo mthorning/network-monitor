@@ -5,26 +5,29 @@ load('ext://uibutton', 'cmd_button')
 
 local_resource(
   'network-monitor-compile',
-  'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/network-monitor-dev ./cmd/network-monitor.go',
-  deps=['./cmd/network-monitor.go', './internal/'])
+  'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/network-monitor-dev ./cmd/network-monitor/main.go',
+  labels=["Compile"],
+  deps=['./cmd/network-monitor/main.go', './internal/'])
 
 docker_build_with_restart(
   'network-monitor-image',
   '.',
-  entrypoint=['/app/build/network-monitor-dev'],
+  dockerfile="dev/network-monitor.Dockerfile",
+  entrypoint=['/app/build/network-monitor-dev', '--ping-ips=192.168.139.205', '--ping-interval=2', '--log-level=DEBUG'],
   only=[ './build'],
   live_update=[
-    sync('./build', '/app/build'),
+    sync('./build/network-monitor-dev', '/app/build/network-monitor-dev'),
   ])
 
-k8s_yaml('dev/k8s.yaml')
-k8s_resource('network-monitor', port_forwards=8080)
+k8s_yaml('dev/network-monitor.k8s.yaml')
+k8s_resource('network-monitor', port_forwards=8080, labels=["Binaries"])
 
 # GO TESTS RESOURCE
 
 local_resource(
     'go-tests',
     cmd='go test ./...',
+    labels=["Tests"],
     trigger_mode=TRIGGER_MODE_MANUAL,
     auto_init=False
 )
@@ -48,8 +51,9 @@ local_resource(
     serve_cmd="""
         docker run --rm \
             --name prometheus \
+            -p 9090:9090 \
             --mount type=bind,source=%s,target=/etc/prometheus/prometheus.yml \
             prom/prometheus
     """ % (HOST_CONFIG_PATH),
-    deps=[CONFIG_PATH]
-)
+    deps=[CONFIG_PATH],
+    labels=["Prometheus"])
