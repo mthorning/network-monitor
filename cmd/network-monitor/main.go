@@ -36,9 +36,7 @@ func main() {
 		"ServerPort", opts.ServerPort,
 	)
 
-	for _, ip := range ips {
-		go utils.PingAndReport(ip, opts, metrics)
-	}
+	utils.PingAndReport(ips, opts, metrics)
 
 	http.Handle("/metrics",
 		promhttp.HandlerFor(

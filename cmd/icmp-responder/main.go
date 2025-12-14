@@ -46,7 +46,7 @@ func listenForConfigChanges(c *Config) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			slog.Error("Error reading HTTP request body", "error", err)
+			slog.Error("Error reading HTTP request body", "error", err.Error())
 		}
 
 		slog.Info("Received request", "body", body)
@@ -64,14 +64,14 @@ func listenForConfigChanges(c *Config) {
 
 	err := http.ListenAndServe(serverPort, nil)
 	if err != nil {
-		slog.Error("Error starting HTTP server", "error", err)
+		slog.Error("Error starting HTTP server", "error", err.Error())
 	}
 }
 
 func listenForPings(c *Config) {
 	conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
-		slog.Error("Failed to listen to icmp", "error", err)
+		slog.Error("Failed to listen to icmp", "error", err.Error())
 	}
 	defer conn.Close()
 
@@ -82,7 +82,7 @@ func listenForPings(c *Config) {
 	for {
 		err := conn.SetReadDeadline(time.Now().Add(time.Second * 5))
 		if err != nil {
-			slog.Error("Error setting Read Deadline", "error", err)
+			slog.Error("Error setting Read Deadline", "error", err.Error())
 		}
 
 		n, addr, err := conn.ReadFrom(readBuf)
@@ -93,13 +93,13 @@ func listenForPings(c *Config) {
 				continue
 			}
 
-			slog.Error("Error reading to buffer", "error", err)
+			slog.Error("Error reading to buffer", "error", err.Error())
 			continue
 		}
 
 		rm, err := icmp.ParseMessage(protocolICMP, readBuf[:n])
 		if err != nil {
-			slog.Error("Error reading icmp message", "error", err)
+			slog.Error("Error reading icmp message", "error", err.Error())
 			continue
 		}
 
@@ -109,8 +109,8 @@ func listenForPings(c *Config) {
 				slog.Error("Received non-echo body")
 			}
 
-			slog.Info(fmt.Sprintf("Received Echo Request from %s (ID: %d, Seq: %d)",
-				addr.String(), echo.ID, echo.Seq))
+			slog.Info("Received Echo Request",
+				"ip", addr.String(), "id", echo.ID, "seq", echo.Seq)
 
 			time.Sleep(time.Duration(c.ResponseDelay) * time.Millisecond)
 
@@ -126,20 +126,21 @@ func listenForPings(c *Config) {
 
 			wb, err := wm.Marshal(nil)
 			if err != nil {
-				slog.Error("Error marhalling message to bytes")
+				slog.Error("Error marhalling message to bytes", "error", err.Error())
 				continue
 			}
 
 			_, err = conn.WriteTo(wb, addr)
 			if err != nil {
-				slog.Error("Error writing back to addr", err)
+				slog.Error("Error writing back to addr", "error", err.Error())
 				continue
 			}
 
 			slog.Info(fmt.Sprintf("Sent Echo Reply to %s", addr.String()))
 
 		} else {
-			slog.Error("Not ipv4 echo, received: %s", rm.Type)
+			slog.Error("Not ipv4 echo", "type", rm.Type)
+
 		}
 	}
 }
