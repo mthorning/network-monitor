@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 	"network-monitor/internal/config"
-	"network-monitor/internal/utils"
+	"network-monitor/internal/monitoring"
 	"os"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -23,20 +24,15 @@ func main() {
 	})
 	slog.SetDefault(slog.New(handler))
 
-	ips, err := utils.GetIps(opts.PingIps)
-	if err != nil {
-		slog.Error(err.Error(), "config.PingIps", opts.PingIps)
-		os.Exit(1)
-	}
-
-	slog.Info("Starting Network Monitor", "IPs", ips)
+	slog.Info("Starting Network Monitor", "ips", strings.Join(opts.PingIps, ", "))
 	slog.Debug("Configuration options",
 		"PingIps", opts.PingIps,
 		"PingInterval", opts.PingInterval,
 		"ServerPort", opts.ServerPort,
 	)
 
-	utils.PingAndReport(ips, opts, metrics)
+	pinger := monitoring.NewPinger(opts, metrics)
+	pinger.Run()
 
 	http.Handle("/metrics",
 		promhttp.HandlerFor(
@@ -46,7 +42,7 @@ func main() {
 			}),
 	)
 
-	err = http.ListenAndServe(fmt.Sprintf(":%s", opts.ServerPort), nil)
+	err := http.ListenAndServe(fmt.Sprintf(":%s", opts.ServerPort), nil)
 	if err != nil {
 		slog.Error("Failed to start server", "error", err)
 		os.Exit(1)
