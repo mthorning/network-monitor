@@ -6,6 +6,10 @@ build:
 dev:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o build/icmp-responder ./cmd/icmp-responder/main.go
 
+.PHONY: test
+test:
+	go test -v ./internal/utils
+
 .PHONY: clean
 clean:
 	rm -rf ./build
