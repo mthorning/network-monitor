@@ -1,11 +1,10 @@
 package config
 
 import (
-	"errors"
 	"flag"
 	"log/slog"
+	"network-monitor/internal/utils"
 	"os"
-	"strings"
 )
 
 const defaultIps = "192.168.68.1, 192.168.1.1, 1.1.1.1, 8.8.8.8, 79.79.79.79"
@@ -18,7 +17,7 @@ type Opts struct {
 }
 
 func NewOpts() *Opts {
-	pingIps, err := GetIps(defaultIps)
+	pingIps, err := utils.GetIps(defaultIps)
 	if err != nil {
 		slog.Error("Default IPs can't be parsed", "error", err, "ips", defaultIps)
 		os.Exit(1)
@@ -44,7 +43,7 @@ func (o *Opts) ParseFlags() {
 
 	flag.Parse()
 
-	pingIps, err := GetIps(*stringIps)
+	pingIps, err := utils.GetIps(*stringIps)
 	if err != nil {
 		slog.Error("Default IPs can't be parsed", "error", err, "ips", stringIps)
 		os.Exit(1)
@@ -64,23 +63,4 @@ func (o *Opts) ParseFlags() {
 	case "ERROR":
 		o.LogLevel = slog.LevelError
 	}
-}
-
-func GetIps(ipsString string) ([]string, error) {
-	ips := strings.Split(ipsString, ",")
-	var processedIps []string
-
-	for i := range ips {
-		ip := strings.TrimSpace(ips[i])
-
-		if ip != "" {
-			processedIps = append(processedIps, ip)
-		}
-	}
-
-	if len(processedIps) == 0 {
-		return nil, errors.New("No valid IP addresses supplied")
-	}
-
-	return processedIps, nil
 }

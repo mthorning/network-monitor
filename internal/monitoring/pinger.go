@@ -11,10 +11,15 @@ import (
 	"github.com/tatsushid/go-fastping"
 )
 
+type TimeoutHandler interface {
+	OnTimeout()
+}
+
 type Pinger struct {
 	p       *fastping.Pinger
 	mu      sync.Mutex
 	replied map[string]bool
+	th      TimeoutHandler
 }
 
 func NewPinger(opts *config.Opts, metrics *config.Metrics) *Pinger {
@@ -68,6 +73,10 @@ func (pinger *Pinger) configure(opts *config.Opts, metrics *config.Metrics) {
 				metrics.TotalTimoutCounter.WithLabelValues(ip).Inc()
 				// Record a metric value with 1ms above the ping interval so that we don't skew the hist
 				metrics.DurationHist.WithLabelValues(ip).Observe(float64(opts.PingInterval) + 0.001)
+
+				if pinger.th != nil {
+					pinger.th.OnTimeout()
+				}
 			}
 
 			// reset for next round
