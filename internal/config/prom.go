@@ -29,7 +29,7 @@ func NewMetrics(reg *prometheus.Registry) *Metrics {
 			prometheus.HistogramOpts{
 				Name:    "ping_request_duration_seconds",
 				Help:    "Duration of the ping request in seconds",
-				Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0},
+				Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0},
 			},
 			[]string{"ip"},
 		),
