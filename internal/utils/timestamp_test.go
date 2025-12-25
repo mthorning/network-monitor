@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-func getTestVals() (*time.Time, []byte) {
+func getTestVals() (time.Time, []byte) {
 	xmasLunch := time.Date(2025, time.December, 25, 13, 0, 0, 0, time.UTC)
 	xmasBytes := []byte{24, 132, 118, 210, 110, 49, 32, 0}
-	return &xmasLunch, xmasBytes
+	return xmasLunch, xmasBytes
 }
 
 func TestTimeToBinary(t *testing.T) {
@@ -23,7 +23,7 @@ func TestTimeToBinary(t *testing.T) {
 func TestBinaryToTime(t *testing.T) {
 	xmasLunch, xmasBytes := getTestVals()
 	output := BinaryToTime(xmasBytes)
-	if !xmasLunch.Equal(*output) {
+	if !xmasLunch.Equal(output) {
 		t.Errorf("Sliceds are not equal: %v vs %v", output, xmasBytes)
 	}
 }

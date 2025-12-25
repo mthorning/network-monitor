@@ -3,7 +3,7 @@ package config
 import (
 	"flag"
 	"log/slog"
-	"network-monitor/internal/utils"
+	"network_monitor/internal/utils"
 	"os"
 )
 

@@ -1,4 +1,4 @@
-module network-monitor
+module network_monitor
 
 go 1.25.4
 

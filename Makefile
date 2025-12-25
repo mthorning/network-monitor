@@ -1,10 +1,10 @@
 .PHONY: build
 build:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "-X main.BuildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" -o build/network-monitor ./cmd/network-monitor/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "-X main.BuildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" -o build/network-monitor ./cmd/network_monitor/main.go
 
 .PHONY: dev
 dev:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o build/icmp-responder ./cmd/icmp-responder/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o build/icmp_responder ./cmd/icmp_responder/main.go
 
 .PHONY: test
 test:
