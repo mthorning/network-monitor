@@ -5,6 +5,8 @@ import (
 	"net"
 	"network-monitor/internal/config"
 	"os"
+	"slices"
+	"sort"
 	"sync"
 	"time"
 
@@ -15,11 +17,22 @@ type TimeoutHandler interface {
 	OnTimeout()
 }
 
-type Pinger struct {
-	p       *fastping.Pinger
+type Tracker struct {
 	mu      sync.Mutex
-	replied map[string]bool
-	th      TimeoutHandler
+	tracked map[string]bool
+}
+
+func newTracker() Tracker {
+	return Tracker{
+		tracked: make(map[string]bool),
+	}
+}
+
+type Pinger struct {
+	p                *fastping.Pinger
+	th               TimeoutHandler
+	replied          Tracker
+	previousTimeouts []string
 }
 
 func NewPinger(opts *config.Opts, metrics *config.Metrics) *Pinger {
@@ -27,8 +40,9 @@ func NewPinger(opts *config.Opts, metrics *config.Metrics) *Pinger {
 	p.MaxRTT = time.Duration(opts.PingInterval) * time.Second
 
 	pinger := Pinger{
-		p:       p,
-		replied: make(map[string]bool),
+		p:                p,
+		replied:          newTracker(),
+		previousTimeouts: make([]string, 0),
 	}
 
 	pinger.addIps(opts.PingIps)
@@ -50,25 +64,26 @@ func (pinger *Pinger) addIps(ips []string) {
 
 func (pinger *Pinger) configure(opts *config.Opts, metrics *config.Metrics) {
 	pinger.p.OnRecv = func(ip *net.IPAddr, rtt time.Duration) {
-		pinger.mu.Lock()
-		defer pinger.mu.Unlock()
+		pinger.replied.mu.Lock()
+		defer pinger.replied.mu.Unlock()
 
 		// can receive 0s durations after a timeout, we should ignore them
 		if rtt > 0 {
 			slog.Debug("Response received", "ip", ip, "duration", rtt)
 			metrics.DurationHist.WithLabelValues(ip.String()).Observe(rtt.Seconds())
-			pinger.replied[ip.String()] = true
+			pinger.replied.tracked[ip.String()] = true
 		}
 	}
 
 	pinger.p.OnIdle = func() {
 		metrics.TotalPingsCounter.Inc()
-		pinger.mu.Lock()
-		defer pinger.mu.Unlock()
+		pinger.replied.mu.Lock()
+		defer pinger.replied.mu.Unlock()
 
-		for ip, replied := range pinger.replied {
+		timeouts := make([]string, 0)
+		for ip, replied := range pinger.replied.tracked {
 			if !replied {
-				slog.Info("Ping timed out", "ip", ip)
+				timeouts = append(timeouts, ip)
 
 				metrics.TotalTimoutCounter.WithLabelValues(ip).Inc()
 				// Record a metric value with 1ms above the ping interval so that we don't skew the hist
@@ -80,8 +95,21 @@ func (pinger *Pinger) configure(opts *config.Opts, metrics *config.Metrics) {
 			}
 
 			// reset for next round
-			pinger.replied[ip] = false
+			pinger.replied.tracked[ip] = false
 		}
+
+		sort.Slice(timeouts, func(i, j int) bool {
+			return timeouts[i] > timeouts[j]
+		})
+
+		if !slices.Equal(pinger.previousTimeouts, timeouts) {
+			slog.Info("Pings timed out", "ips", timeouts)
+		}
+		if len(pinger.previousTimeouts) > 0 && len(timeouts) == 0 {
+			slog.Info("No more timeouts")
+		}
+
+		pinger.previousTimeouts = timeouts
 	}
 }
 
