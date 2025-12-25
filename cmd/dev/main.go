@@ -1,8 +1,10 @@
 package main
 
 import (
-	"log/slog"
-	"os"
+	"flag"
+	"fmt"
+	"log"
+	"slices"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -13,13 +15,19 @@ import (
 )
 
 func main() {
-	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level:     slog.LevelDebug,
-		AddSource: true,
-	})
-	slog.SetDefault(slog.New(handler))
+	supportedModes := []string{"single", "continuous", "traceroute"}
+	mode := flag.String("mode", "single", fmt.Sprintf("One of %v", supportedModes))
+	flag.Parse()
+	if !slices.Contains(supportedModes, *mode) {
+		log.Fatalf("Unsupported mode, needs one of %v", supportedModes)
+	}
 
-	singlePing()
+	switch *mode {
+	case "single":
+		singlePing()
+	default:
+		log.Fatalf("%v mode not supported yet", *mode)
+	}
 }
 
 func singlePing() {
@@ -28,28 +36,28 @@ func singlePing() {
 	}
 	rm, peer, err := network.ICMPPing(opts)
 	if err != nil {
-		slog.Error("Ping failed", "error", err)
+		log.Fatalf("Ping failed: %v", err)
 	}
 
 	switch rm.Type {
 	case ipv4.ICMPTypeEchoReply:
 		body, ok := rm.Body.(*icmp.Echo)
 		if !ok {
-			slog.Error("Unexpected ICMP reply data", "data", body.Data)
+			log.Fatalf("Unexpected ICMP reply data: %v", body.Data)
 		}
 		if len(body.Data) < 8 {
-			slog.Error("echo reply data too short", "data", body.Data, "length", len(body.Data))
+			log.Fatalf("Echo reply data too short, received length: %v", len(body.Data))
 		}
 
 		start := utils.BinaryToTime(body.Data[:8])
 		now := time.Now()
 		duration := now.Sub(start)
-		slog.Debug("Received echo reply", "peer", peer, "duration", duration, "start", start, "now", now)
-	case ipv4.ICMPTypeDestinationUnreachable:
-		slog.Debug("Destination unreachable", "peer", peer)
+		log.Printf("Received echo reply from %v, duration: %v", peer, duration)
 	case ipv4.ICMPTypeTimeExceeded:
-		slog.Debug("Time exceeded", "peer", peer)
+		log.Printf("Time exceeded from %v", peer)
+	case ipv4.ICMPTypeDestinationUnreachable:
+		log.Printf("Destination unreachable")
 	default:
-		slog.Debug("Unexpected ICMP type", "type", rm.Type, "peer", peer)
+		log.Fatalf("Unexpected ICMP type: %v", rm.Type)
 	}
 }
