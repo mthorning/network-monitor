@@ -12,7 +12,7 @@ import (
 )
 
 type ICMPPingOpts struct {
-	Ip                   string
+	IP                   string
 	ReadDeadlineDuration time.Duration
 	TTL                  int
 }
@@ -48,7 +48,7 @@ func ICMPPing(opts ICMPPingOpts) (*icmp.Message, net.Addr, error) {
 		return nil, nil, err
 	}
 
-	dest, err := net.ResolveIPAddr("ip4:icmp", opts.Ip)
+	dest, err := net.ResolveIPAddr("ip4:icmp", opts.IP)
 	if _, err := c.WriteTo(mb, dest); err != nil {
 		return nil, nil, err
 	}
@@ -72,7 +72,7 @@ func ICMPPing(opts ICMPPingOpts) (*icmp.Message, net.Addr, error) {
 }
 
 func checkOpts(opts *ICMPPingOpts) error {
-	if opts.Ip == "" {
+	if opts.IP == "" {
 		return errors.New("opts.Ip is required, no value set")
 	}
 	if opts.TTL == 0 {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strings"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -25,6 +26,8 @@ func main() {
 	switch *mode {
 	case "single":
 		singlePing()
+	case "traceroute":
+		traceroute()
 	default:
 		log.Fatalf("%v mode not supported yet", *mode)
 	}
@@ -32,7 +35,7 @@ func main() {
 
 func singlePing() {
 	opts := network.ICMPPingOpts{
-		Ip: "8.8.8.8",
+		IP: "8.8.8.8",
 	}
 	rm, peer, err := network.ICMPPing(opts)
 	if err != nil {
@@ -60,4 +63,25 @@ func singlePing() {
 	default:
 		log.Fatalf("Unexpected ICMP type: %v", rm.Type)
 	}
+}
+
+func traceroute() {
+	hops, err := network.Traceroute("8.8.8.8")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	hopStr := ""
+	for _, hop := range hops {
+		if hop.Ip == "" {
+			continue
+		}
+		hopStr += fmt.Sprintf("%s", hop.Ip)
+		if len(hop.Domains) > 0 {
+			d := strings.Join(hop.Domains, ", ")
+			hopStr += fmt.Sprintf(" (%s)", d)
+		}
+		hopStr += "\n"
+	}
+	log.Print(hopStr)
 }
