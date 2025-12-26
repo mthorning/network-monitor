@@ -14,6 +14,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var BuildTime string = "not set"
+
 func main() {
 	opts := config.NewOpts()
 	registry := prometheus.NewRegistry()
@@ -25,7 +27,7 @@ func main() {
 	})
 	slog.SetDefault(slog.New(handler))
 
-	slog.Info("Starting Network Monitor", "ips", strings.Join(opts.PingIps, ", "))
+	slog.Info("Starting Network Monitor", "ips", strings.Join(opts.PingIps, ", "), "built", BuildTime)
 	slog.Debug("Configuration options",
 		"PingIps", opts.PingIps,
 		"PingInterval", opts.PingInterval,
