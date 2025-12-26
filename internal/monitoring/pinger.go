@@ -3,7 +3,7 @@ package monitoring
 import (
 	"log/slog"
 	"net"
-	"network-monitor/internal/config"
+	"network_monitor/internal/config"
 	"os"
 	"slices"
 	"sort"

@@ -1,4 +1,4 @@
-network-monitor/README.md
+network_monitor/README.md
 # Network Monitor
 
 Network Monitor is a Go-based tool for monitoring network connectivity and latency to a configurable list of IP addresses. It periodically pings each IP and exposes detailed metrics about response times via a Prometheus-compatible `/metrics` endpoint.
@@ -27,15 +27,15 @@ Network Monitor is a Go-based tool for monitoring network connectivity and laten
 ### Build & Run
 
 ```sh
-go build -o network-monitor ./cmd/network-monitor.go
-./network-monitor
+go build -o network_monitor ./cmd/network_monitor.go
+./network_monitor
 ```
 
 Or with Docker:
 
 ```sh
-docker build -t network-monitor .
-docker run -p 8080:8080 network-monitor
+docker build -t network_monitor .
+docker run -p 8080:8080 network_monitor
 ```
 
 ### Configuration
