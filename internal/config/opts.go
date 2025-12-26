@@ -16,14 +16,14 @@ type Opts struct {
 	ServerPort   string
 }
 
-func NewOpts() *Opts {
+func NewOpts() Opts {
 	pingIps, err := utils.GetIps(defaultIps)
 	if err != nil {
 		slog.Error("Default IPs can't be parsed", "error", err, "ips", defaultIps)
 		os.Exit(1)
 	}
 
-	opts := &Opts{
+	opts := Opts{
 		PingIps:      pingIps,
 		LogLevel:     slog.LevelInfo,
 		PingInterval: 15,

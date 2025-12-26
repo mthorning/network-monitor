@@ -10,6 +10,10 @@ dev:
 test:
 	go test -v ./internal/utils
 
+.PHONY: ping-vm
+ping-vm:
+	go run cmd/network-monitor/main.go -ping-ips "192.168.139.205" -log-level "DEBUG"
+
 .PHONY: clean
 clean:
 	rm -rf ./build

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"network-monitor/internal/config"
-	"network-monitor/internal/monitoring"
+	"network_monitor/internal/config"
+	"network_monitor/internal/monitoring"
+	"network_monitor/internal/network"
 	"os"
 	"strings"
 
@@ -33,7 +34,8 @@ func main() {
 		"ServerPort", opts.ServerPort,
 	)
 
-	pinger := monitoring.NewPinger(opts, metrics)
+	fastPing := network.NewFastPing(opts)
+	pinger := monitoring.NewPinger(fastPing, opts, metrics)
 	pinger.Run()
 
 	http.Handle("/metrics",
