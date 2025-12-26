@@ -43,11 +43,10 @@ func (pt *PingTracker) getTimeouts() []string {
 		return timeouts[i] > timeouts[j]
 	})
 
-	if !slices.Equal(pt.prevTimeouts, timeouts) {
-		slog.Info("Pings timed out", "ips", timeouts)
-	}
 	if len(pt.prevTimeouts) > 0 && len(timeouts) == 0 {
 		slog.Info("No more timeouts")
+	} else if len(timeouts) > 0 && !slices.Equal(pt.prevTimeouts, timeouts) {
+		slog.Info("Pings timed out", "ips", timeouts)
 	}
 
 	pt.prevTimeouts = timeouts
