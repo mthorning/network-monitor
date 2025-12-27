@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: network_monitor
+  name: network-monitor
   labels:
-    app: network_monitor
+    app: network-monitor
 spec:
   selector:
     matchLabels:
-      app: network_monitor
+      app: network-monitor
   template:
     metadata:
       labels:
-        app: network_monitor
+        app: network-monitor
     spec:
       containers:
-        - name: network_monitor
-          image: network_monitor-image
+        - name: network-monitor
+          image: network-monitor-image
           ports:
             - containerPort: 8080

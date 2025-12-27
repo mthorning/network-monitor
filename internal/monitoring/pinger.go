@@ -4,26 +4,23 @@ import (
 	"log/slog"
 	"net"
 	"network_monitor/internal/config"
+	"network_monitor/internal/network"
 	"os"
-	"time"
 )
 
-type PingLooper interface {
-	AddIPAddr(ip *net.IPAddr)
-	SetOnResponse(cb func(ip *net.IPAddr, rtt time.Duration))
-	SetOnIntervalEnd(cb func())
-	Run()
-}
-
 type Pinger struct {
-	p       PingLooper
+	pl      *network.PingLoop
 	opts    config.Opts
-	tracker PingTracker
+	tracker *PingTracker
 }
 
-func NewPinger(p PingLooper, opts config.Opts, metrics *config.Metrics) *Pinger {
+func NewPinger(opts config.Opts, metrics *config.Metrics) (*Pinger, error) {
+	pl, err := network.NewPingLoop(opts.PingInterval)
+	if err != nil {
+		return nil, err
+	}
 	pinger := Pinger{
-		p:       p,
+		pl:      pl,
 		opts:    opts,
 		tracker: newPingTracker(),
 	}
@@ -31,7 +28,11 @@ func NewPinger(p PingLooper, opts config.Opts, metrics *config.Metrics) *Pinger 
 	pinger.addIps(opts.PingIps)
 	pinger.configure(metrics)
 
-	return &pinger
+	return &pinger, nil
+}
+
+func (pinger *Pinger) Run() {
+	pinger.pl.Run()
 }
 
 func (pinger *Pinger) addIps(ips []string) {
@@ -41,33 +42,36 @@ func (pinger *Pinger) addIps(ips []string) {
 			slog.Error("Error resolving IP", "error", err.Error())
 			os.Exit(1)
 		}
-		pinger.p.AddIPAddr(ra)
+		pinger.pl.AddIpAddr(ra)
 		pinger.tracker.replies[ip] = false
 	}
 }
 
 func (pinger *Pinger) configure(metrics *config.Metrics) {
-	pinger.p.SetOnResponse(func(ip *net.IPAddr, rtt time.Duration) {
+	pinger.pl.OnResponse = func(res *network.PingLoopResponse) {
 		// can receive 0s durations after a timeout, we should ignore them
-		if rtt > 0 {
-			slog.Debug("Response received", "ip", ip, "duration", rtt)
-			metrics.DurationHist.WithLabelValues(ip.String()).Observe(rtt.Seconds())
-			pinger.tracker.replyReceived(ip.String())
+		if res.Duration > 0 {
+			slog.Debug("Response received", "ip", res.Peer, "duration", res.Duration, "seq", res.Body.Seq)
+			metrics.DurationHist.WithLabelValues(res.Peer.String()).Observe(res.Duration.Seconds())
+			pinger.tracker.replyReceived(res.Peer.String())
 		}
-	})
+	}
 
-	pinger.p.SetOnIntervalEnd(func() {
-		metrics.TotalPingsCounter.Inc()
+	pinger.pl.OnIntervalEnd = func() {
+		slog.Debug("Interval ended")
+		for _, ip := range pinger.opts.PingIps {
+			metrics.TotalPingsCounter.WithLabelValues(ip).Inc()
+		}
+
 		timeouts := pinger.tracker.getTimeouts()
-
 		for _, ip := range timeouts {
 			metrics.TotalTimoutCounter.WithLabelValues(ip).Inc()
 			// Record a metric value with 1ms above the ping interval so that we don't skew the hist
 			metrics.DurationHist.WithLabelValues(ip).Observe(float64(pinger.opts.PingInterval) + 0.001)
 		}
-	})
-}
+	}
 
-func (pinger *Pinger) Run() {
-	pinger.p.Run()
+	pinger.pl.OnError = func(err error) {
+		slog.Error("Pinger received an error", "error", err)
+	}
 }

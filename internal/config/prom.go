@@ -5,18 +5,19 @@ import (
 )
 
 type Metrics struct {
-	TotalPingsCounter  prometheus.Counter
+	TotalPingsCounter  *prometheus.CounterVec
 	TotalTimoutCounter *prometheus.CounterVec
 	DurationHist       *prometheus.HistogramVec
 }
 
 func NewMetrics(reg *prometheus.Registry) *Metrics {
 	m := &Metrics{
-		prometheus.NewCounter(
+		prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "ping_total",
 				Help: "Total number of pings made",
 			},
+			[]string{"ip"},
 		),
 		prometheus.NewCounterVec(
 			prometheus.CounterOpts{

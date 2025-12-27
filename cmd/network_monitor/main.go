@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"network_monitor/internal/config"
 	"network_monitor/internal/monitoring"
-	"network_monitor/internal/network"
 	"os"
 	"strings"
 
@@ -27,15 +26,18 @@ func main() {
 	})
 	slog.SetDefault(slog.New(handler))
 
-	slog.Info("Starting Network Monitor", "ips", strings.Join(opts.PingIps, ", "), "built", BuildTime)
+	slog.Info("Starting Network Monitor", "ips", strings.Join(opts.PingIps, ", "), "build", BuildTime)
 	slog.Debug("Configuration options",
 		"PingIps", opts.PingIps,
 		"PingInterval", opts.PingInterval,
 		"ServerPort", opts.ServerPort,
 	)
 
-	fastping := network.NewFastPing(opts)
-	pinger := monitoring.NewPinger(fastping, opts, metrics)
+	pinger, err := monitoring.NewPinger(opts, metrics)
+	if err != nil {
+		slog.Error("Failed to create new pinger", "error", err)
+		os.Exit(1)
+	}
 	pinger.Run()
 
 	http.Handle("/metrics",
@@ -46,9 +48,11 @@ func main() {
 			}),
 	)
 
-	err := http.ListenAndServe(fmt.Sprintf(":%s", opts.ServerPort), nil)
+	err = http.ListenAndServe(fmt.Sprintf(":%s", opts.ServerPort), nil)
+	slog.Debug("HELLO")
 	if err != nil {
 		slog.Error("Failed to start server", "error", err)
 		os.Exit(1)
 	}
+	slog.Debug("Serving metrics at /metrics", "port", opts.ServerPort)
 }

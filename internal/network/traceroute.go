@@ -5,33 +5,37 @@ import (
 )
 
 type Hop struct {
-	Ip      string
+	IP      net.Addr
 	Domains []string
 }
 
-func Traceroute(ip string) ([]Hop, error) {
+func Traceroute(ip *net.IPAddr) ([]Hop, error) {
 	hops := make([]Hop, 0)
 
 	for i := 1; i <= 30; i++ {
+		icmpPing, err := NewICMPPing()
+		if err != nil {
+			return nil, err
+		}
+		defer icmpPing.Close()
+
 		opts := ICMPPingOpts{
 			IP:  ip,
 			TTL: i,
 		}
-		_, peer, err := ICMPPing(opts)
+		res, err := icmpPing.Ping(opts)
 		if err != nil {
 			return nil, err
 		}
 
-		addr, _ := net.LookupAddr(peer.String())
-
-		peerStr := peer.String()
+		addr, _ := net.LookupAddr(res.Peer.String())
 
 		hops = append(hops, Hop{
-			Ip:      peerStr,
+			IP:      res.Peer,
 			Domains: addr,
 		})
 
-		if peerStr == ip {
+		if res.Peer == ip {
 			break
 		}
 	}

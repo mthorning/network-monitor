@@ -4,23 +4,23 @@ load('ext://uibutton', 'cmd_button')
 # NETWORK MONITOR
 
 local_resource(
-  'network_monitor-compile',
-  'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/network_monitor-dev ./cmd/network_monitor/main.go',
+  'network-monitor-compile',
+  'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/network-monitor-dev ./cmd/network_monitor/main.go',
   labels=["Compile"],
   deps=['./cmd/network_monitor/main.go', './internal/'])
 
 docker_build_with_restart(
-  'network_monitor-image',
+  'network-monitor-image',
   '.',
-  dockerfile="dev/network_monitor.Dockerfile",
-  entrypoint=['/app/build/network_monitor-dev', '--ping-ips=192.168.139.205', '--log-level=DEBUG'],
+  dockerfile="dev/network-monitor.Dockerfile",
+  entrypoint=['/app/build/network-monitor-dev', '--ping-ips=8.8.8.8,79.79.79.79', '--log-level=DEBUG'],
   only=[ './build'],
   live_update=[
-    sync('./build/network_monitor-dev', '/app/build/network_monitor-dev'),
+    sync('./build/network-monitor-dev', '/app/build/network-monitor-dev'),
   ])
 
-k8s_yaml('dev/network_monitor.k8s.yaml')
-k8s_resource('network_monitor', port_forwards=8080, labels=["Binaries"])
+k8s_yaml('dev/network-monitor.k8s.yaml')
+k8s_resource('network-monitor', port_forwards=8080, labels=["Binaries"])
 
 # GO TESTS RESOURCE
 

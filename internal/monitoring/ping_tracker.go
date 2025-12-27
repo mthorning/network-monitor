@@ -14,8 +14,8 @@ type PingTracker struct {
 	prevTimeouts []string
 }
 
-func newPingTracker() PingTracker {
-	return PingTracker{
+func newPingTracker() *PingTracker {
+	return &PingTracker{
 		replies:      make(map[string]bool),
 		timeouts:     make([]string, 0),
 		prevTimeouts: make([]string, 0),
