@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"network_monitor/internal/utils"
 	"os"
@@ -101,7 +102,7 @@ func (p *ICMPPing) Ping(opts ICMPPingOpts) (*ICMPPingResponse, error) {
 		case ipv4.ICMPTypeDestinationUnreachable:
 			return nil, errors.New("Destination unreachable")
 		default:
-			return nil, errors.New("Unhandled ICMP type")
+			return nil, errors.New(fmt.Sprintf("Unhandled ICMP type: %s", msg.Type))
 		}
 	}
 }
