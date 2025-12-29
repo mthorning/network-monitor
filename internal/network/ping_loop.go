@@ -75,15 +75,15 @@ func (p *PingLoop) startLoop() {
 	seq := 0
 	for {
 		var wg sync.WaitGroup
+		wg.Add(1)
 		rtn := make(chan ICMPPingResponse)
-		p.icmpPing.Read(rtn, &wg, p.interval-300*time.Millisecond)
-		go func() {
-			wg.Wait()
-			close(rtn)
-		}()
+
+		// Read should time out and call Done, allowing the loop
+		// to continue
+		p.icmpPing.Read(rtn, &wg, p.interval)
 
 		go p.listenForMessage(seq, seq+len(p.pingIps), rtn)
-		wg.Add(len(p.pingIps))
+
 		for _, ip := range p.pingIps {
 			seq += 1
 			opts := ICMPPingOpts{
@@ -99,7 +99,9 @@ func (p *PingLoop) startLoop() {
 				continue
 			}
 		}
-		time.Sleep(p.interval)
+
+		wg.Wait()
+		close(rtn)
 		p.OnIntervalEnd()
 	}
 }
