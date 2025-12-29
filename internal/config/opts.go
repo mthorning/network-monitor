@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-const defaultIps = "192.168.68.1, 192.168.1.1, 1.1.1.1, 8.8.8.8, 79.79.79.79"
+const defaultIps = "8.8.8.8"
 
 type Opts struct {
 	PingIps      []string

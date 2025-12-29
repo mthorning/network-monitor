@@ -51,27 +51,24 @@ func (pinger *Pinger) configure(metrics *config.Metrics) {
 	pinger.pl.OnResponse = func(res *network.PingLoopResponse) {
 		// can receive 0s durations after a timeout, we should ignore them
 		if res.Duration > 0 {
-			slog.Debug("Response received", "ip", res.Peer, "duration", res.Duration, "seq", res.Body.Seq)
 			metrics.DurationHist.WithLabelValues(res.Peer.String()).Observe(res.Duration.Seconds())
 			pinger.tracker.replyReceived(res.Peer.String())
 		}
 	}
 
 	pinger.pl.OnIntervalEnd = func() {
-		slog.Debug("Interval ended")
 		for _, ip := range pinger.opts.PingIps {
 			metrics.TotalPingsCounter.WithLabelValues(ip).Inc()
 		}
 
 		timeouts := pinger.tracker.getTimeouts()
+		pinger.tracker.reset()
+		slog.Debug("Interval ended", "timeouts", timeouts)
+
 		for _, ip := range timeouts {
 			metrics.TotalTimoutCounter.WithLabelValues(ip).Inc()
 			// Record a metric value with 1ms above the ping interval so that we don't skew the hist
 			metrics.DurationHist.WithLabelValues(ip).Observe(float64(pinger.opts.PingInterval) + 0.001)
 		}
-	}
-
-	pinger.pl.OnError = func(err error) {
-		slog.Error("Pinger received an error", "error", err)
 	}
 }

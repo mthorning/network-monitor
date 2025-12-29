@@ -2,10 +2,10 @@ package network
 
 import (
 	"errors"
-	"fmt"
+	"log/slog"
 	"net"
 	"network_monitor/internal/utils"
-	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -17,18 +17,16 @@ type ICMPPing struct {
 }
 
 type ICMPPingOpts struct {
-	IP                   *net.IPAddr
-	ReadDeadlineDuration time.Duration
-	TTL                  int
-	Seq                  int
+	ID  int
+	IP  *net.IPAddr
+	TTL int
+	Seq int
 }
 
 type ICMPPingResponse struct {
-	Body *icmp.Echo
-	Peer net.Addr
+	Message *icmp.Message
+	Peer    net.Addr
 }
-
-var ErrTimeExceeded = errors.New("Time exceeded")
 
 func NewICMPPing() (*ICMPPing, error) {
 	c, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
@@ -41,21 +39,21 @@ func NewICMPPing() (*ICMPPing, error) {
 	}, nil
 }
 
-func (p *ICMPPing) Ping(opts ICMPPingOpts) (*ICMPPingResponse, error) {
+func (p *ICMPPing) Ping(opts ICMPPingOpts) error {
 	if err := checkOpts(&opts); err != nil {
-		return nil, err
+		return err
 	}
 
 	pc := p.conn.IPv4PacketConn()
 	if err := pc.SetTTL(opts.TTL); err != nil {
-		return nil, err
+		return err
 	}
 
 	now := time.Now()
 	m := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Body: &icmp.Echo{
-			ID:   os.Getpid(),
+			ID:   opts.ID,
 			Seq:  opts.Seq,
 			Data: utils.TimeToBinary(now),
 		},
@@ -63,48 +61,50 @@ func (p *ICMPPing) Ping(opts ICMPPingOpts) (*ICMPPingResponse, error) {
 
 	mb, err := m.Marshal(nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if _, err := p.conn.WriteTo(mb, opts.IP); err != nil {
-		return nil, err
+		return err
+	}
+	return nil
+}
+
+func (p *ICMPPing) Read(rtn chan ICMPPingResponse, wg *sync.WaitGroup, readDeadlineDuration time.Duration) error {
+	rd := readDeadlineDuration
+	if rd == 0 {
+		rd = 3 * time.Second
 	}
 
-	if err := p.conn.SetReadDeadline(time.Now().Add(opts.ReadDeadlineDuration)); err != nil {
-		return nil, err
+	if err := p.conn.SetReadDeadline(time.Now().Add(readDeadlineDuration)); err != nil {
+		return err
 	}
 
 	buf := make([]byte, 1500)
 
-	for {
-		n, peer, err := p.conn.ReadFrom(buf)
-		if err != nil {
-			continue
-		}
-
-		msg, err := icmp.ParseMessage(1, buf[:n])
-		if err != nil {
-			continue
-		}
-
-		switch msg.Type {
-		case ipv4.ICMPTypeEchoReply:
-			body := msg.Body.(*icmp.Echo)
-			if body.ID == os.Getpid() && body.Seq == opts.Seq {
-				r := ICMPPingResponse{
-					Body: body,
-					Peer: peer,
-				}
-				return &r, nil
+	go func() {
+		for {
+			n, peer, err := p.conn.ReadFrom(buf)
+			if err != nil {
+				break
 			}
-		case ipv4.ICMPTypeTimeExceeded:
-			return nil, ErrTimeExceeded
-		case ipv4.ICMPTypeDestinationUnreachable:
-			return nil, errors.New("Destination unreachable")
-		default:
-			return nil, errors.New(fmt.Sprintf("Unhandled ICMP type: %s", msg.Type))
+
+			msg, err := icmp.ParseMessage(1, buf[:n])
+			if err != nil {
+				slog.Warn("Unable to parse icmp message")
+				continue
+			}
+
+			res := ICMPPingResponse{
+				Message: msg,
+				Peer:    peer,
+			}
+
+			rtn <- res
 		}
-	}
+		wg.Done()
+	}()
+	return nil
 }
 
 func (p *ICMPPing) Close() {
@@ -117,9 +117,6 @@ func checkOpts(opts *ICMPPingOpts) error {
 	}
 	if opts.TTL == 0 {
 		opts.TTL = 64
-	}
-	if opts.ReadDeadlineDuration == 0 {
-		opts.ReadDeadlineDuration = 3 * time.Second
 	}
 
 	return nil

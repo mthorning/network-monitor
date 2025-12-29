@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -46,7 +47,7 @@ func (pt *PingTracker) getTimeouts() []string {
 	if len(pt.prevTimeouts) > 0 && len(timeouts) == 0 {
 		slog.Info("No more timeouts")
 	} else if len(timeouts) > 0 && !slices.Equal(pt.prevTimeouts, timeouts) {
-		slog.Info("Pings timed out", "ips", timeouts)
+		slog.Info("Pings timed out", "ips", strings.Join(timeouts, ","))
 	}
 
 	pt.prevTimeouts = timeouts

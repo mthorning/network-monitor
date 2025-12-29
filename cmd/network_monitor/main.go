@@ -26,7 +26,7 @@ func main() {
 	})
 	slog.SetDefault(slog.New(handler))
 
-	slog.Info("Starting Network Monitor", "ips", strings.Join(opts.PingIps, ", "), "build", BuildTime)
+	slog.Info("Starting Network Monitor", "ips", strings.Join(opts.PingIps, ","), "build", BuildTime)
 	slog.Debug("Configuration options",
 		"PingIps", opts.PingIps,
 		"PingInterval", opts.PingInterval,

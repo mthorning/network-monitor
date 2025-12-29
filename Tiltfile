@@ -13,7 +13,7 @@ docker_build_with_restart(
   'network-monitor-image',
   '.',
   dockerfile="dev/network-monitor.Dockerfile",
-  entrypoint=['/app/build/network-monitor-dev', '--ping-ips=8.8.8.8,79.79.79.79', '--log-level=DEBUG'],
+  entrypoint=['/app/build/network-monitor-dev', '--log-level=DEBUG'],
   only=[ './build'],
   live_update=[
     sync('./build/network-monitor-dev', '/app/build/network-monitor-dev'),

@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"net"
 	"network_monitor/internal/utils"
 	"slices"
+	"sync"
 	"time"
 
 	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
 type PingLoopResponse struct {
@@ -23,10 +26,9 @@ type PingLoop struct {
 	pingIps       []*net.IPAddr
 	OnResponse    func(*PingLoopResponse)
 	OnIntervalEnd func()
-	OnError       func(err error)
 	resChan       chan PingLoopResponse
-	errChan       chan error
 	icmpPing      *ICMPPing
+	ospid         int
 }
 
 func NewPingLoop(interval uint) (*PingLoop, error) {
@@ -40,7 +42,7 @@ func NewPingLoop(interval uint) (*PingLoop, error) {
 		interval: time.Duration(interval) * time.Second,
 		pingIps:  make([]*net.IPAddr, 0),
 		resChan:  make(chan PingLoopResponse),
-		errChan:  make(chan error),
+		ospid:    rand.Intn(0xffff),
 	}
 
 	return &p, nil
@@ -62,12 +64,8 @@ func (p *PingLoop) Run() error {
 	if p.OnIntervalEnd == nil {
 		return errors.New("OnIntervalEnd not set")
 	}
-	if p.OnError == nil {
-		return errors.New("OnError not set")
-	}
 
 	go p.listenToResChan()
-	go p.listenToErrChan()
 	go p.startLoop()
 
 	return nil
@@ -76,16 +74,31 @@ func (p *PingLoop) Run() error {
 func (p *PingLoop) startLoop() {
 	seq := 0
 	for {
+		var wg sync.WaitGroup
+		rtn := make(chan ICMPPingResponse)
+		p.icmpPing.Read(rtn, &wg, p.interval-300*time.Millisecond)
+		go func() {
+			wg.Wait()
+			close(rtn)
+		}()
+
+		go p.listenForMessage(seq, seq+len(p.pingIps), rtn)
+		wg.Add(len(p.pingIps))
 		for _, ip := range p.pingIps {
 			seq += 1
 			opts := ICMPPingOpts{
-				IP:                   ip,
-				Seq:                  seq,
-				ReadDeadlineDuration: p.interval,
+				ID:  p.ospid,
+				IP:  ip,
+				Seq: seq,
 			}
-			go p.makePing(opts)
-		}
+			slog.Debug("Pinging", "ip", opts.IP, "seq", opts.Seq)
 
+			err := p.icmpPing.Ping(opts)
+			if err != nil {
+				slog.Error("Failed to ping", "error", err, "ip", opts.IP)
+				continue
+			}
+		}
 		time.Sleep(p.interval)
 		p.OnIntervalEnd()
 	}
@@ -97,33 +110,31 @@ func (p *PingLoop) listenToResChan() {
 	}
 }
 
-func (p *PingLoop) listenToErrChan() {
-	for err := range p.errChan {
-		p.OnError(err)
-	}
-}
+func (p *PingLoop) listenForMessage(min int, max int, rtn chan ICMPPingResponse) {
+	for res := range rtn {
+		if res.Message.Type == ipv4.ICMPTypeEchoReply {
+			body := res.Message.Body.(*icmp.Echo)
+			if body.ID == p.ospid && body.Seq > min && body.Seq <= max {
+				duration, err := getDuration(body)
+				if err != nil {
+					slog.Warn("Unable to get duration", "error", err)
+				}
+				slog.Debug("Received response", "ip", res.Peer, "duration", duration, "seq", body.Seq)
 
-func (p *PingLoop) makePing(opts ICMPPingOpts) {
-	slog.Debug("Pinging", "ip", opts.IP, "seq", opts.Seq)
-	res, err := p.icmpPing.Ping(opts)
-	if err != nil {
-		p.errChan <- err
-		return
-	}
+				response := PingLoopResponse{
+					Body:     body,
+					Peer:     res.Peer,
+					Duration: duration,
+				}
 
-	duration, err := getDuration(res.Body)
-	if err != nil {
-		p.errChan <- err
-		return
+				p.resChan <- response
+			} else {
+				slog.Debug("Received different ID/Seq ICMP message", "ospid", p.ospid, "id", body.ID, "seq", body.Seq)
+			}
+		} else {
+			slog.Debug("Received different type ICMP message", "type", res.Message.Type)
+		}
 	}
-
-	response := PingLoopResponse{
-		Body:     res.Body,
-		Peer:     res.Peer,
-		Duration: duration,
-	}
-
-	p.resChan <- response
 }
 
 func getDuration(body *icmp.Echo) (time.Duration, error) {

@@ -8,10 +8,8 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"network_monitor/internal/network"
-	"network_monitor/internal/utils"
 )
 
 func main() {
@@ -43,34 +41,35 @@ func main() {
 }
 
 func singlePing() {
-	dest, err := net.ResolveIPAddr("ip4:icmp", "8.8.8.8")
-	if err != nil {
-		slog.Error("Failed to resolve IP address")
-		os.Exit(1)
-	}
-	icmpPing, err := network.NewICMPPing()
-	if err != nil {
-		slog.Error("ICMPPing creation failed", "error", err)
-	}
-	defer icmpPing.Close()
+	// dest, err := net.ResolveIPAddr("ip4:icmp", "8.8.8.8")
+	// if err != nil {
+	// 	slog.Error("Failed to resolve IP address")
+	// 	os.Exit(1)
+	// }
+	// icmpPing, err := network.NewICMPPing()
+	// if err != nil {
+	// 	slog.Error("ICMPPing creation failed", "error", err)
+	// }
+	// defer icmpPing.Close()
 
-	opts := network.ICMPPingOpts{
-		IP: dest,
-	}
-	res, err := icmpPing.Ping(opts)
-	if err != nil {
-		slog.Error("Ping failed", "error", err)
-	}
+	// opts := network.ICMPPingOpts{
+	// 	IP: dest,
+	// }
+	// rtn := make(chan network.ICMPPingResponse)
+	// err = icmpPing.Ping(opts, rtn)
+	// if err != nil {
+	// 	slog.Error("Ping failed", "error", err)
+	// }
 
-	if len(res.Body.Data) < 8 {
-		slog.Error("Echo reply data too short", "length", len(res.Body.Data))
-		os.Exit(1)
-	}
+	// // if len(res.Body.Data) < 8 {
+	// // 	slog.Error("Echo reply data too short", "length", len(res.Body.Data))
+	// // 	os.Exit(1)
+	// // }
 
-	start := utils.BinaryToTime(res.Body.Data[:8])
-	now := time.Now()
-	duration := now.Sub(start)
-	slog.Debug("Received echo reply", "peer", res.Peer, "duration", duration)
+	// // start := utils.BinaryToTime(res.Body.Data[:8])
+	// // now := time.Now()
+	// // duration := now.Sub(start)
+	// // slog.Debug("Received echo reply", "peer", res.Peer, "duration", duration)
 }
 
 func continuousPing() {
@@ -133,7 +132,7 @@ func traceroute() {
 		}
 		hopStr += fmt.Sprintf("%s", hop.IP)
 		if len(hop.Domains) > 0 {
-			d := strings.Join(hop.Domains, ", ")
+			d := strings.Join(hop.Domains, ",")
 			hopStr += fmt.Sprintf(" (%s)", d)
 		}
 		hopStr += "\n"
