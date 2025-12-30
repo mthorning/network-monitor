@@ -8,7 +8,6 @@ import (
 	"net"
 	"network_monitor/internal/utils"
 	"slices"
-	"sync"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -74,35 +73,34 @@ func (p *PingLoop) Run() error {
 func (p *PingLoop) startLoop() {
 	seq := 0
 	for {
-		var wg sync.WaitGroup
-		wg.Add(1)
-		rtn := make(chan ICMPPingResponse)
-
-		// Read should time out and call Done, allowing the loop
-		// to continue
-		p.icmpPing.Read(rtn, &wg, p.interval)
-
-		go p.listenForMessage(seq, seq+len(p.pingIps), rtn)
-
-		for _, ip := range p.pingIps {
-			seq += 1
-			opts := ICMPPingOpts{
-				ID:  p.ospid,
-				IP:  ip,
-				Seq: seq,
-			}
-			slog.Debug("Pinging", "ip", opts.IP, "seq", opts.Seq)
-
-			err := p.icmpPing.Ping(opts)
-			if err != nil {
-				slog.Error("Failed to ping", "error", err, "ip", opts.IP)
-				continue
-			}
+		// Read should time out and close rtnChan
+		rtnChan, err := p.icmpPing.Read(p.interval)
+		if err != nil {
+			slog.Warn("Error with icmpPing.Read", "error", err)
 		}
 
-		wg.Wait()
-		close(rtn)
+		go p.makePing(&seq)
+
+		// Will block until rtnChan is closed by Read
+		p.listenForMessage(seq, seq+len(p.pingIps), rtnChan)
 		p.OnIntervalEnd()
+	}
+}
+func (p *PingLoop) makePing(seq *int) {
+	for _, ip := range p.pingIps {
+		*seq += 1
+		opts := ICMPPingOpts{
+			ID:  p.ospid,
+			IP:  ip,
+			Seq: *seq,
+		}
+		slog.Debug("Pinging", "ip", opts.IP, "seq", opts.Seq)
+
+		err := p.icmpPing.Ping(opts)
+		if err != nil {
+			slog.Error("Failed to ping", "error", err, "ip", opts.IP)
+			continue
+		}
 	}
 }
 
@@ -131,7 +129,7 @@ func (p *PingLoop) listenForMessage(min int, max int, rtn chan ICMPPingResponse)
 
 				p.resChan <- response
 			} else {
-				slog.Debug("Received different ID/Seq ICMP message", "ospid", p.ospid, "id", body.ID, "seq", body.Seq)
+				slog.Debug("Received different ID/Seq ICMP message", "ospid", p.ospid, "id", body.ID, "seq", body.Seq, "min", min, "max", max)
 			}
 		} else {
 			slog.Debug("Received different type ICMP message", "type", res.Message.Type)

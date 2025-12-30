@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net"
 	"network_monitor/internal/utils"
-	"sync"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -70,14 +69,15 @@ func (p *ICMPPing) Ping(opts ICMPPingOpts) error {
 	return nil
 }
 
-func (p *ICMPPing) Read(rtn chan ICMPPingResponse, wg *sync.WaitGroup, readDeadlineDuration time.Duration) error {
+func (p *ICMPPing) Read(readDeadlineDuration time.Duration) (chan ICMPPingResponse, error) {
+	rtn := make(chan ICMPPingResponse)
 	rd := readDeadlineDuration
 	if rd == 0 {
 		rd = 3 * time.Second
 	}
 
 	if err := p.conn.SetReadDeadline(time.Now().Add(readDeadlineDuration)); err != nil {
-		return err
+		return nil, err
 	}
 
 	buf := make([]byte, 1500)
@@ -102,9 +102,9 @@ func (p *ICMPPing) Read(rtn chan ICMPPingResponse, wg *sync.WaitGroup, readDeadl
 
 			rtn <- res
 		}
-		wg.Done()
+		close(rtn)
 	}()
-	return nil
+	return rtn, nil
 }
 
 func (p *ICMPPing) Close() {
