@@ -5,9 +5,9 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
-  bin = "./build/main"
-  cmd = "go build -o ./build/main ./cmd/traceroute"
+  args_bin = ["--mode=traceroute"]
+  bin = "./build/dev"
+  cmd = "go build -o ./build/dev ./cmd/dev/main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []

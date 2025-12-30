@@ -34,8 +34,6 @@ func NewMetrics(reg *prometheus.Registry) *Metrics {
 			},
 			[]string{"ip"},
 		),
-		// rate(ping_total_timeouts_total[5m]) / rate(ping_total[5m])
-		// histogram_quantile(0.99, sum(rate(ping_request_duration_seconds_bucket[5m])) by (le))
 	}
 	reg.MustRegister(m.TotalPingsCounter)
 	reg.MustRegister(m.TotalTimoutCounter)

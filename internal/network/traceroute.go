@@ -1,55 +1,68 @@
 package network
 
 import (
+	"math/rand"
 	"net"
+	"time"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
 type Hop struct {
-	IP      net.Addr
-	Domains []string
+	IP      net.Addr `json:"ip"`
+	Domains []string `json:"domains", omitempty`
 }
 
 func Traceroute(ip *net.IPAddr) ([]Hop, error) {
-	// hops := make([]Hop, 0)
+	hops := make([]Hop, 0)
 
-	// for i := 1; i <= 30; i++ {
-	// 	icmpPing, err := NewICMPPing()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	defer icmpPing.Close()
+loop:
+	for i := 1; i <= 30; i++ {
+		icmpPing, err := NewICMPPing()
+		if err != nil {
+			return nil, err
+		}
+		defer icmpPing.Close()
 
-	// 	opts := ICMPPingOpts{
-	// 		IP:  ip,
-	// 		TTL: i,
-	// 	}
-	// 	rtn := make(chan ICMPPingResponse)
-	// 	err = icmpPing.Ping(opts, rtn)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
+		rtn, err := icmpPing.Read(3 * time.Second)
 
-	// 	for res := range rtn {
-	// 		switch res.Message.Type {
-	// 		case ipv4.ICMPTypeEchoReply:
-	// 			addr, _ := net.LookupAddr(res.Peer.String())
+		id := rand.Intn(0xffff)
 
-	// 			hops = append(hops, Hop{
-	// 				IP:      res.Peer,
-	// 				Domains: addr,
-	// 			})
+		opts := ICMPPingOpts{
+			IP:  ip,
+			TTL: i,
+			Seq: i,
+			id:  id,
+		}
+		err = icmpPing.Ping(opts)
+		if err != nil {
+			return nil, err
+		}
 
-	// 			if res.Peer == ip {
-	// 				break
-	// 			}
-	// 		case ipv4.ICMPTypeTimeExceeded:
-	// 			// TODO: THIS IS THE TIMEOUT
-	// 		default:
-	// 			// TODO: NOT SURE HERE
-	// 		}
-	// 	}
-	// }
+	read:
+		for res := range rtn {
+			switch res.Message.Type {
+			case ipv4.ICMPTypeEchoReply:
+				addr, _ := net.LookupAddr(res.Peer.String())
 
-	// return hops, nil
-	return nil, nil
+				hops = append(hops, Hop{
+					IP:      res.Peer,
+					Domains: addr,
+				})
+
+				body := res.Message.Body.(*icmp.Echo)
+				if body.ID == id && body.Seq == i {
+					break loop
+				}
+			case ipv4.ICMPTypeTimeExceeded:
+				hops = append(hops, Hop{
+					IP: res.Peer,
+				})
+				break read
+			}
+		}
+	}
+
+	return hops, nil
 }

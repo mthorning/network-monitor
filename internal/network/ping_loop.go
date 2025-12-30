@@ -21,16 +21,17 @@ type PingLoopResponse struct {
 }
 
 type PingLoop struct {
-	interval      time.Duration
-	pingIps       []*net.IPAddr
-	OnResponse    func(*PingLoopResponse)
-	OnIntervalEnd func()
-	resChan       chan PingLoopResponse
-	icmpPing      *ICMPPing
-	ospid         int
+	interval        time.Duration
+	pingIps         []*net.IPAddr
+	OnResponse      func(*PingLoopResponse)
+	OnIntervalStart func()
+	OnIntervalEnd   func()
+	resChan         chan PingLoopResponse
+	icmpPing        *iCMPPing
+	ospid           int
 }
 
-func NewPingLoop(interval uint) (*PingLoop, error) {
+func NewPingLoop(interval int) (*PingLoop, error) {
 	icmpPing, err := NewICMPPing()
 	if err != nil {
 		return nil, err
@@ -70,9 +71,17 @@ func (p *PingLoop) Run() error {
 	return nil
 }
 
+func (p *PingLoop) listenToResChan() {
+	for res := range p.resChan {
+		p.OnResponse(&res)
+	}
+}
+
 func (p *PingLoop) startLoop() {
 	seq := 0
 	for {
+		p.OnIntervalStart()
+
 		// Read should time out and close rtnChan
 		rtnChan, err := p.icmpPing.Read(p.interval)
 		if err != nil {
@@ -86,11 +95,12 @@ func (p *PingLoop) startLoop() {
 		p.OnIntervalEnd()
 	}
 }
+
 func (p *PingLoop) makePing(seq *int) {
 	for _, ip := range p.pingIps {
 		*seq += 1
 		opts := ICMPPingOpts{
-			ID:  p.ospid,
+			id:  p.ospid,
 			IP:  ip,
 			Seq: *seq,
 		}
@@ -101,12 +111,6 @@ func (p *PingLoop) makePing(seq *int) {
 			slog.Error("Failed to ping", "error", err, "ip", opts.IP)
 			continue
 		}
-	}
-}
-
-func (p *PingLoop) listenToResChan() {
-	for res := range p.resChan {
-		p.OnResponse(&res)
 	}
 }
 

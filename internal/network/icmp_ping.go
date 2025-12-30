@@ -11,12 +11,12 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-type ICMPPing struct {
+type iCMPPing struct {
 	conn *icmp.PacketConn
 }
 
 type ICMPPingOpts struct {
-	ID  int
+	id  int
 	IP  *net.IPAddr
 	TTL int
 	Seq int
@@ -27,18 +27,18 @@ type ICMPPingResponse struct {
 	Peer    net.Addr
 }
 
-func NewICMPPing() (*ICMPPing, error) {
+func NewICMPPing() (*iCMPPing, error) {
 	c, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
 		return nil, err
 	}
 
-	return &ICMPPing{
+	return &iCMPPing{
 		conn: c,
 	}, nil
 }
 
-func (p *ICMPPing) Ping(opts ICMPPingOpts) error {
+func (p *iCMPPing) Ping(opts ICMPPingOpts) error {
 	if err := checkOpts(&opts); err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (p *ICMPPing) Ping(opts ICMPPingOpts) error {
 	m := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Body: &icmp.Echo{
-			ID:   opts.ID,
+			ID:   opts.id,
 			Seq:  opts.Seq,
 			Data: utils.TimeToBinary(now),
 		},
@@ -69,12 +69,8 @@ func (p *ICMPPing) Ping(opts ICMPPingOpts) error {
 	return nil
 }
 
-func (p *ICMPPing) Read(readDeadlineDuration time.Duration) (chan ICMPPingResponse, error) {
+func (p *iCMPPing) Read(readDeadlineDuration time.Duration) (chan ICMPPingResponse, error) {
 	rtn := make(chan ICMPPingResponse)
-	rd := readDeadlineDuration
-	if rd == 0 {
-		rd = 3 * time.Second
-	}
 
 	if err := p.conn.SetReadDeadline(time.Now().Add(readDeadlineDuration)); err != nil {
 		return nil, err
@@ -107,7 +103,7 @@ func (p *ICMPPing) Read(readDeadlineDuration time.Duration) (chan ICMPPingRespon
 	return rtn, nil
 }
 
-func (p *ICMPPing) Close() {
+func (p *iCMPPing) Close() {
 	defer p.conn.Close()
 }
 

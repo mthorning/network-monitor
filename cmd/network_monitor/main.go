@@ -33,12 +33,12 @@ func main() {
 		"ServerPort", opts.ServerPort,
 	)
 
-	pinger, err := monitoring.NewPinger(opts, metrics)
+	manager, err := monitoring.NewManager(opts, metrics)
 	if err != nil {
 		slog.Error("Failed to create new pinger", "error", err)
 		os.Exit(1)
 	}
-	pinger.Run()
+	manager.Run()
 
 	http.Handle("/metrics",
 		promhttp.HandlerFor(

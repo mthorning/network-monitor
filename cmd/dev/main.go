@@ -1,3 +1,4 @@
+/* Probably best to ignore this, it's just a scratchpad */
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"network_monitor/internal/network"
 )
@@ -29,10 +31,13 @@ func main() {
 
 	switch *mode {
 	case "single":
+		slog.Debug("single mode")
 		singlePing()
 	case "continuous":
+		slog.Debug("continuouse mode")
 		continuousPing()
 	case "traceroute":
+		slog.Debug("traceroute mode")
 		traceroute()
 	default:
 		slog.Error("Mode not supported yet", "mode", *mode)
@@ -41,35 +46,30 @@ func main() {
 }
 
 func singlePing() {
-	// dest, err := net.ResolveIPAddr("ip4:icmp", "8.8.8.8")
-	// if err != nil {
-	// 	slog.Error("Failed to resolve IP address")
-	// 	os.Exit(1)
-	// }
-	// icmpPing, err := network.NewICMPPing()
-	// if err != nil {
-	// 	slog.Error("ICMPPing creation failed", "error", err)
-	// }
-	// defer icmpPing.Close()
+	dest, err := net.ResolveIPAddr("ip4:icmp", "8.8.8.8")
+	if err != nil {
+		slog.Error("Failed to resolve IP address")
+		os.Exit(1)
+	}
+	icmpPing, err := network.NewICMPPing()
+	if err != nil {
+		slog.Error("ICMPPing creation failed", "error", err)
+	}
+	defer icmpPing.Close()
 
-	// opts := network.ICMPPingOpts{
-	// 	IP: dest,
-	// }
-	// rtn := make(chan network.ICMPPingResponse)
-	// err = icmpPing.Ping(opts, rtn)
-	// if err != nil {
-	// 	slog.Error("Ping failed", "error", err)
-	// }
+	rtn, err := icmpPing.Read(3 * time.Second)
+	opts := network.ICMPPingOpts{
+		IP: dest,
+	}
 
-	// // if len(res.Body.Data) < 8 {
-	// // 	slog.Error("Echo reply data too short", "length", len(res.Body.Data))
-	// // 	os.Exit(1)
-	// // }
+	err = icmpPing.Ping(opts)
+	if err != nil {
+		slog.Error("Ping failed", "error", err)
+	}
 
-	// // start := utils.BinaryToTime(res.Body.Data[:8])
-	// // now := time.Now()
-	// // duration := now.Sub(start)
-	// // slog.Debug("Received echo reply", "peer", res.Peer, "duration", duration)
+	for msg := range rtn {
+		slog.Debug("Received message", "message", msg.Message.Type)
+	}
 }
 
 func continuousPing() {
