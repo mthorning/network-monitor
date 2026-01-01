@@ -68,7 +68,7 @@ func (pinger *Pinger) configure(metrics *config.Metrics) {
 		for _, ip := range timeouts {
 			metrics.TotalTimoutCounter.WithLabelValues(ip).Inc()
 			// Record a metric value with 1ms above the ping interval so that we don't skew the hist
-			metrics.DurationHist.WithLabelValues(ip).Observe(float64(pinger.opts.PingInterval) + 0.001)
+			// metrics.DurationHist.WithLabelValues(ip).Observe(float64(pinger.opts.PingInterval) + 0.001)
 		}
 	}
 }
