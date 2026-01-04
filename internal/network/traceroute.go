@@ -11,7 +11,7 @@ import (
 
 type Hop struct {
 	IP      net.Addr `json:"ip"`
-	Domains []string `json:"domains", omitempty`
+	Domains []string `json:"domains,omitempty"`
 }
 
 func Traceroute(ip *net.IPAddr) ([]Hop, error) {
