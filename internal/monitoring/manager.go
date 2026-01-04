@@ -60,7 +60,7 @@ func (m *Manager) configure(metrics *config.Metrics) {
 		for _, ip := range m.opts.PingIps {
 			metrics.TotalPingsCounter.WithLabelValues(ip).Inc()
 
-			if m.traceCountdown == 0 && !strings.HasPrefix(ip, "192.168") {
+			if m.traceCountdown == 0 {
 				if hops, ok := m.runTrace(ip); ok {
 					slog.Debug("Trace run", "ip", ip, "hops", hops)
 					m.traceTracker.Set(ip, hops)
@@ -99,6 +99,9 @@ func (m *Manager) configure(metrics *config.Metrics) {
 }
 
 func (m *Manager) runTrace(ip string) ([]network.Hop, bool) {
+	if strings.HasPrefix(ip, "192.168") {
+		return nil, false
+	}
 	ra, err := net.ResolveIPAddr("ip4:icmp", ip)
 	if err != nil {
 		slog.Error("Error resolving IP for traceroute", "error", err.Error(), "ip", ip)
