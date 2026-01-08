@@ -25,7 +25,7 @@ type PingLoop struct {
 	pingIps         []*net.IPAddr
 	OnResponse      func(*PingLoopResponse)
 	OnIntervalStart func()
-	OnIntervalEnd   func()
+	OnIntervalEnd   func(ospid int, seq int)
 	resChan         chan PingLoopResponse
 	icmpPing        *iCMPPing
 	ospid           int
@@ -92,7 +92,7 @@ func (p *PingLoop) startLoop() {
 
 		// Will block until rtnChan is closed by Read
 		p.listenForMessage(seq, seq+len(p.pingIps), rtnChan)
-		p.OnIntervalEnd()
+		p.OnIntervalEnd(p.ospid, seq)
 	}
 }
 

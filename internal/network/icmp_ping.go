@@ -104,7 +104,7 @@ func (p *iCMPPing) Read(readDeadlineDuration time.Duration) (chan ICMPPingRespon
 }
 
 func (p *iCMPPing) Close() {
-	defer p.conn.Close()
+	p.conn.Close()
 }
 
 func checkOpts(opts *ICMPPingOpts) error {

@@ -81,7 +81,7 @@ func (m *Manager) configure(metrics *config.Metrics) {
 		}
 	}
 
-	m.pingLoop.OnIntervalEnd = func() {
+	m.pingLoop.OnIntervalEnd = func(ospid, seq int) {
 		timeouts := m.timeoutTracker.getTimeouts()
 		slog.Debug("Interval ended", "timeouts", timeouts)
 
@@ -90,7 +90,7 @@ func (m *Manager) configure(metrics *config.Metrics) {
 
 			if t.count >= m.opts.TraceTimeoutThreshold {
 				if hops, ok := m.runTrace(t.ip); ok {
-					slog.Warn("Ping threshold crossed", "ip", t.ip, "good", m.traceTracker.Get(t.ip), "bad", hops)
+					slog.Warn("Ping threshold crossed", "ip", t.ip, "good", m.traceTracker.Get(t.ip), "bad", hops, "ospid", ospid, "seq", seq)
 					m.timeoutTracker.resetCount(t.ip)
 				}
 			}

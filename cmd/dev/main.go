@@ -85,7 +85,7 @@ func continuousPing() {
 	pl.OnResponse = func(res *network.PingLoopResponse) {
 		resChan <- res
 	}
-	pl.OnIntervalEnd = func() {
+	pl.OnIntervalEnd = func(_, _ int) {
 		idleChan <- true
 	}
 
