@@ -78,7 +78,9 @@ func (p *PingLoop) listenToResChan() {
 }
 
 func (p *PingLoop) startLoop() {
-	seq := 0
+	// Needs to be uint16 so it overflows before it
+	// becomes larger than icmp headers can handle
+	var seq_counter uint16
 	for {
 		p.OnIntervalStart()
 
@@ -88,6 +90,7 @@ func (p *PingLoop) startLoop() {
 			slog.Warn("Error with icmpPing.Read", "error", err)
 		}
 
+		seq := int(seq_counter)
 		go p.makePing(&seq)
 
 		// Will block until rtnChan is closed by Read
