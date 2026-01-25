@@ -125,17 +125,18 @@ func traceroute() {
 		slog.Error("Error from traceroute", "error", err)
 	}
 
-	hopStr := ""
+	var hopStr strings.Builder
 	for _, hop := range hops {
-		if hop.IP.String() == "" {
+		ip := hop.IP.String()
+		if ip == "" {
 			continue
 		}
-		hopStr += fmt.Sprintf("%s", hop.IP)
+		hopStr.WriteString(ip)
 		if len(hop.Domains) > 0 {
 			d := strings.Join(hop.Domains, ",")
-			hopStr += fmt.Sprintf(" (%s)", d)
+			fmt.Fprintf(&hopStr, " (%s)", d)
 		}
-		hopStr += "\n"
+		hopStr.WriteByte('\n')
 	}
-	slog.Debug(hopStr)
+	slog.Debug(hopStr.String())
 }

@@ -32,7 +32,7 @@ type timeout struct {
 	count int
 }
 
-func (tt *timeoutTracker) getTimeouts() []timeout {
+func (tt *timeoutTracker) countTimeouts() []timeout {
 	timeouts := make([]timeout, 0)
 	replies := tt.replies.GetAll()
 	for ip, replied := range replies {

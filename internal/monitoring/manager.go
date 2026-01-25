@@ -8,6 +8,7 @@ import (
 	"network_monitor/internal/utils"
 	"os"
 	"strings"
+	"time"
 )
 
 type Manager struct {
@@ -82,18 +83,22 @@ func (m *Manager) configure(metrics *config.Metrics) {
 	}
 
 	m.pingLoop.OnIntervalEnd = func(ospid, seq int) {
-		timeouts := m.timeoutTracker.getTimeouts()
-		slog.Debug("Interval ended", "timeouts", timeouts)
+		if shouldCountTimeouts() {
+			timeouts := m.timeoutTracker.countTimeouts()
+			slog.Debug("Interval ended", "timeouts", timeouts)
 
-		for _, t := range timeouts {
-			metrics.TotalTimoutCounter.WithLabelValues(t.ip).Inc()
+			for _, t := range timeouts {
+				metrics.TotalTimoutCounter.WithLabelValues(t.ip).Inc()
 
-			if t.count >= m.opts.TraceTimeoutThreshold {
-				if hops, ok := m.runTrace(t.ip); ok {
-					slog.Warn("Ping threshold crossed", "ip", t.ip, "good", m.traceTracker.Get(t.ip), "bad", hops, "ospid", ospid, "seq", seq)
-					m.timeoutTracker.resetCount(t.ip)
+				if t.count >= m.opts.TraceTimeoutThreshold {
+					if hops, ok := m.runTrace(t.ip); ok {
+						slog.Warn("Ping threshold crossed", "ip", t.ip, "good", m.traceTracker.Get(t.ip), "bad", hops, "ospid", ospid, "seq", seq)
+						m.timeoutTracker.resetCount(t.ip)
+					}
 				}
 			}
+		} else {
+			slog.Debug("Timeout counting disabled")
 		}
 	}
 }
@@ -115,4 +120,18 @@ func (m *Manager) runTrace(ip string) ([]network.Hop, bool) {
 	}
 
 	return hops, true
+}
+
+func shouldCountTimeouts() bool {
+	now := time.Now()
+	year, month, day := now.Date()
+
+	downtimeStart := time.Date(year, month, day, 3, 0, 0, 0, time.UTC)
+	downtimeEnd := time.Date(year, month, day, 3, 5, 0, 0, time.UTC)
+
+	if downtimeStart.Compare(now) == -1 && downtimeEnd.Compare(now) != -1 {
+		return false
+	}
+
+	return true
 }

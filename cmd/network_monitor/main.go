@@ -49,7 +49,6 @@ func main() {
 	)
 
 	err = http.ListenAndServe(fmt.Sprintf(":%s", opts.ServerPort), nil)
-	slog.Debug("HELLO")
 	if err != nil {
 		slog.Error("Failed to start server", "error", err)
 		os.Exit(1)

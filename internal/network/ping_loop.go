@@ -146,7 +146,7 @@ func (p *PingLoop) listenForMessage(min int, max int, rtn chan ICMPPingResponse)
 
 func getDuration(body *icmp.Echo) (time.Duration, error) {
 	if len(body.Data) < 8 {
-		return 0, errors.New(fmt.Sprintf("Echo reply data too short, length: %d", len(body.Data)))
+		return 0, fmt.Errorf("Echo reply data too short, length: %d", len(body.Data))
 	}
 
 	start := utils.BinaryToTime(body.Data[:8])
