@@ -23,4 +23,4 @@ release:
 	$(MAKE) clean
 	$(MAKE) build
 	scp ./build/network-monitor pi:/tmp/network-monitor
-	ssh -t pi "sudo bash -c 'mv /tmp/network-monitor /usr/local/bin && sudo systemctl restart network-monitor'"
+	ssh -t monitoring "sudo bash -c 'mv /tmp/network-monitor /usr/local/bin && sudo systemctl restart network-monitor'"
