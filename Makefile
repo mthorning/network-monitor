@@ -2,6 +2,10 @@
 build:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "-X main.BuildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" -o build/network-monitor ./cmd/network_monitor/main.go
 
+.PHONY: build-amd
+build-amd:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.BuildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" -o build/network-monitor ./cmd/network_monitor/main.go
+
 .PHONY: dev
 dev:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o build/icmp_responder ./cmd/icmp_responder/main.go
@@ -21,6 +25,6 @@ clean:
 .PHONY: release
 release:
 	$(MAKE) clean
-	$(MAKE) build
-	scp ./build/network-monitor pi:/tmp/network-monitor
-	ssh -t monitoring "sudo bash -c 'mv /tmp/network-monitor /usr/local/bin && sudo systemctl restart network-monitor'"
+	$(MAKE) build-amd
+	scp -p ./build/network-monitor monitoring:/tmp/network-monitor
+	ssh -t monitoring "bash -c 'mv /tmp/network-monitor /usr/local/bin && chmod 0755 /usr/local/bin/network-monitor && systemctl restart network-monitor'"

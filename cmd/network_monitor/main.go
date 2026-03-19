@@ -20,9 +20,12 @@ func main() {
 	registry := prometheus.NewRegistry()
 	metrics := config.NewMetrics(registry)
 
-	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	var handler slog.Handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level:     opts.LogLevel,
 		AddSource: true,
+	})
+	handler = handler.WithAttrs([]slog.Attr{
+		slog.String("service", "network-monitor"),
 	})
 	slog.SetDefault(slog.New(handler))
 
