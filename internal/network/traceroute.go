@@ -17,14 +17,14 @@ type Hop struct {
 func Traceroute(ip *net.IPAddr) ([]Hop, error) {
 	hops := make([]Hop, 0)
 
+	icmpPing, err := NewICMPPing()
+	if err != nil {
+		return nil, err
+	}
+	defer icmpPing.Close()
+
 loop:
 	for i := 1; i <= 30; i++ {
-		icmpPing, err := NewICMPPing()
-		if err != nil {
-			return nil, err
-		}
-		defer icmpPing.Close()
-
 		rtn, err := icmpPing.Read(3 * time.Second)
 
 		id := rand.Intn(0xffff)
