@@ -36,6 +36,7 @@ func NewPingLoop(interval int) (*PingLoop, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer icmpPing.Close()
 
 	p := PingLoop{
 		icmpPing: icmpPing,
